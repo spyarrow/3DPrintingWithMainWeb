@@ -1046,7 +1046,7 @@ body {
 }
 
 .if-field input[type="date"] {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 .if-field input[type="date"]::-webkit-calendar-picker-indicator {

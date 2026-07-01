@@ -8,63 +8,63 @@
 ═══════════════════════════════════════════════════ */
 
 export async function onRequestPost(context) {
-  const { request, env } = context;
+    const { request, env } = context;
 
-  const corsHeaders = {
-    'Access-Control-Allow-Origin':  '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
+    const corsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    };
 
-  /* ── Parse body ── */
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return jsonRes({ ok: false, error: 'Invalid request body.' }, 400, corsHeaders);
-  }
+    /* ── Parse body ── */
+    let body;
+    try {
+        body = await request.json();
+    } catch {
+        return jsonRes({ ok: false, error: 'Invalid request body.' }, 400, corsHeaders);
+    }
 
-  const { name, email, message, formType } = body;
+    const { name, email, message, formType } = body;
 
-  /* ── Server-side field validation ── */
-  if (!name?.trim() || !email?.trim() || !message?.trim()) {
-    return jsonRes({ ok: false, error: 'Missing required fields.' }, 422, corsHeaders);
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return jsonRes({ ok: false, error: 'Invalid email address.' }, 422, corsHeaders);
-  }
+    /* ── Server-side field validation ── */
+    if (!name?.trim() || !email?.trim() || !message?.trim()) {
+        return jsonRes({ ok: false, error: 'Missing required fields.' }, 422, corsHeaders);
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return jsonRes({ ok: false, error: 'Invalid email address.' }, 422, corsHeaders);
+    }
 
-  /* ── Validate + sanitise attachments ── */
-  // Strip data URI prefix if browser sent it — Resend needs raw base64 only
-  // e.g. "data:image/png;base64,AAAA…" → "AAAA…"
-  let attachments = [];
-  if (Array.isArray(body.attachments) && body.attachments.length > 0) {
-    attachments = body.attachments
-      .filter(a => a && a.filename && a.content)
-      .map(a => ({
-        filename: String(a.filename),
-        content: String(a.content).includes(',')
-          ? String(a.content).split(',')[1]   // strip data URI prefix
-          : String(a.content),                // already clean base64
-      }));
-  }
+    /* ── Validate + sanitise attachments ── */
+    // Strip data URI prefix if browser sent it — Resend needs raw base64 only
+    // e.g. "data:image/png;base64,AAAA…" → "AAAA…"
+    let attachments = [];
+    if (Array.isArray(body.attachments) && body.attachments.length > 0) {
+        attachments = body.attachments
+            .filter(a => a && a.filename && a.content)
+            .map(a => ({
+                filename: String(a.filename),
+                content: String(a.content).includes(',')
+                    ? String(a.content).split(',')[1]   // strip data URI prefix
+                    : String(a.content),                // already clean base64
+            }));
+    }
 
-  const isQuickContact = formType === 'quick';
-  const subjectLine = isQuickContact
-    ? `💬 Quick Message From ${name} — 3D Printing Service`
-    : `🖨️ New Print Order From ${name} — 3D Printing Service`;
+    const isQuickContact = formType === 'quick';
+    const subjectLine = isQuickContact
+        ? `💬 Quick Message From ${name} — 3D Printing Service`
+        : `🖨️ New Print Order From ${name} — 3D Printing Service`;
 
-  /* ── Build attachment summary for email body ── */
-  const attachmentSummaryHtml = attachments.length > 0
-    ? `
+    /* ── Build attachment summary for email body ── */
+    const attachmentSummaryHtml = attachments.length > 0
+        ? `
       <div class="field">
         <div class="label">Attached Files (${attachments.length})</div>
         <div class="value">${attachments.map(a => `📎 ${escHtml(a.filename)}`).join('<br />')}</div>
       </div>`
-    : '';
+        : '';
 
-  /* ── Email HTML ── */
-  const emailHtml = `
+    /* ── Email HTML ── */
+    const emailHtml = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -152,75 +152,75 @@ export async function onRequestPost(context) {
     </body>
     </html>`;
 
-  /* ── Build Resend payload ── */
-  const resendPayload = {
-    from:     'onboarding@resend.dev',   // ← swap to your verified domain when ready
-    to:       ['spyarrow39@gmail.com'],
-    reply_to: email,
-    subject:  subjectLine,
-    html:     emailHtml,
-  };
+    /* ── Build Resend payload ── */
+    const resendPayload = {
+        from: 'onboarding@resend.dev',   // ← swap to your verified domain when ready
+        to: ['spyarrow39@gmail.com'],
+        reply_to: email,
+        subject: subjectLine,
+        html: emailHtml,
+    };
 
-  // Only add attachments key if there are files — Resend errors on empty array
-  if (attachments.length > 0) {
-    resendPayload.attachments = attachments;
-  }
-
-  /* ── Call Resend ── */
-  try {
-    const resendRes = await fetch('https://api.resend.com/emails', {
-      method:  'POST',
-      headers: {
-        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
-        'Content-Type':  'application/json',
-      },
-      body: JSON.stringify(resendPayload),
-    });
-
-    if (!resendRes.ok) {
-      const errText = await resendRes.text();
-      console.error('Resend API error:', resendRes.status, errText);
-      return jsonRes(
-        { ok: false, error: `Email delivery failed (${resendRes.status}). Please try again.` },
-        502, corsHeaders
-      );
+    // Only add attachments key if there are files — Resend errors on empty array
+    if (attachments.length > 0) {
+        resendPayload.attachments = attachments;
     }
 
-    const result = await resendRes.json();
-    console.log('Resend success, id:', result.id);
-    return jsonRes({ ok: true, id: result.id }, 200, corsHeaders);
+    /* ── Call Resend ── */
+    try {
+        const resendRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(resendPayload),
+        });
 
-  } catch (err) {
-    console.error('Fetch error:', err);
-    return jsonRes({ ok: false, error: 'Server error. Please try again later.' }, 500, corsHeaders);
-  }
+        if (!resendRes.ok) {
+            const errText = await resendRes.text();
+            console.error('Resend API error:', resendRes.status, errText);
+            return jsonRes(
+                { ok: false, error: `Email delivery failed (${resendRes.status}). Please try again.` },
+                502, corsHeaders
+            );
+        }
+
+        const result = await resendRes.json();
+        console.log('Resend success, id:', result.id);
+        return jsonRes({ ok: true, id: result.id }, 200, corsHeaders);
+
+    } catch (err) {
+        console.error('Fetch error:', err);
+        return jsonRes({ ok: false, error: 'Server error. Please try again later.' }, 500, corsHeaders);
+    }
 }
 
 /* OPTIONS preflight */
 export async function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+    return new Response(null, {
+        status: 204,
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+        },
+    });
 }
 
 /* ── Helpers ── */
 function jsonRes(data, status, headers) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...headers },
-  });
+    return new Response(JSON.stringify(data), {
+        status,
+        headers: { 'Content-Type': 'application/json', ...headers },
+    });
 }
 
 function escHtml(str) {
-  return String(str)
-    .replace(/&/g,  '&amp;')
-    .replace(/</g,  '&lt;')
-    .replace(/>/g,  '&gt;')
-    .replace(/"/g,  '&quot;')
-    .replace(/'/g,  '&#039;');
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
