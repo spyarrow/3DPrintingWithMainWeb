@@ -556,23 +556,35 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-  /* ─────────────────────────────────────────────
+    /* ─────────────────────────────────────────────
      SHARED: File → Base64 converter
-     Strips the data URI prefix so Resend gets
-     raw base64 content only
+     Strips data URI prefix — Resend needs raw
+     base64 only, no "data:image/png;base64," prefix
   ───────────────────────────────────────────── */
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result.split(',')[1];
+        const result = reader.result;
+
+        // Always strip the data URI prefix if present
+        // "data:application/pdf;base64,AAAA…" → "AAAA…"
+        const base64 = result.includes(',')
+          ? result.split(',')[1]
+          : result;
+
+        if (!base64 || base64.length === 0) {
+          reject(new Error(`Empty base64 for file: ${file.name}`));
+          return;
+        }
+
         resolve({
           filename: file.name,
           content:  base64,
           type:     file.type || 'application/octet-stream',
         });
       };
-      reader.onerror = reject;
+      reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
       reader.readAsDataURL(file);
     });
   }
