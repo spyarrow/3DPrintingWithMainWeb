@@ -227,6 +227,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   /* ─────────────────────────────────────────────
+     4b. DEADLINE — Block past dates in date picker
+  ───────────────────────────────────────────── */
+  const deadlineInput = document.getElementById('if-date');
+  if (deadlineInput) {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    deadlineInput.setAttribute('min', today);
+  }
+
+
+  /* ─────────────────────────────────────────────
      5. INTAKE FORM — validate + POST to /contact
      Files converted to base64 before sending
   ───────────────────────────────────────────── */
@@ -556,7 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-    /* ─────────────────────────────────────────────
+  /* ─────────────────────────────────────────────
      SHARED: File → Base64 converter
      Strips data URI prefix — Resend needs raw
      base64 only, no "data:image/png;base64," prefix
@@ -568,7 +578,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = reader.result;
 
         // Always strip the data URI prefix if present
-        // "data:application/pdf;base64,AAAA…" → "AAAA…"
         const base64 = result.includes(',')
           ? result.split(',')[1]
           : result;
