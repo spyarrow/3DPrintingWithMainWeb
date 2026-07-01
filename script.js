@@ -293,15 +293,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     const payload = {
-      formType:    'intake',
-      name:        document.getElementById('if-name').value.trim(),
-      email:       document.getElementById('if-email').value.trim(),
-      message:     document.getElementById('if-brief').value.trim(),
-      stream:      document.getElementById('if-stream').value,
-      material:    document.getElementById('if-mat').value,
-      qty:         document.getElementById('if-qty').value,
-      colour:      document.getElementById('if-colour').value.trim(),
-      deadline:    document.getElementById('if-date').value,
+      formType: 'intake',
+      name: document.getElementById('if-name').value.trim(),
+      email: document.getElementById('if-email').value.trim(),
+      message: document.getElementById('if-brief').value.trim(),
+      stream: document.getElementById('if-stream').value,
+      material: document.getElementById('if-mat').value,
+      qty: document.getElementById('if-qty').value,
+      colour: document.getElementById('if-colour').value.trim(),
+      deadline: document.getElementById('if-date').value,
       attachments, // base64 encoded file array
     };
 
@@ -380,9 +380,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const payload = {
       formType: 'quick',
-      name:     qform.querySelector('[name="qname"]').value.trim(),
-      email:    qform.querySelector('[name="qemail"]').value.trim(),
-      message:  qform.querySelector('[name="qmessage"]').value.trim(),
+      name: qform.querySelector('[name="qname"]').value.trim(),
+      email: qform.querySelector('[name="qemail"]').value.trim(),
+      message: qform.querySelector('[name="qmessage"]').value.trim(),
     };
 
 
@@ -589,8 +589,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resolve({
           filename: file.name,
-          content:  base64,
-          type:     file.type || 'application/octet-stream',
+          content: base64,
+          type: file.type || 'application/octet-stream',
         });
       };
       reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
